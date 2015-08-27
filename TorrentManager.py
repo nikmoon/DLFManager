@@ -1,5 +1,18 @@
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+import types
+import MyLib
+from PyQt4 import QtCore, QtGui, uic
+from PyQt4.QtGui import QListWidget, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QColor
+
+
+if not "win32" in sys.platform:
+	print u"Неизвестная ОС. sys.platrform = \"{0}\""
+	sys.exit()
+
+
 """
 -----------------------------------------------------
 Алгоритм работы программы
@@ -58,14 +71,6 @@ def run_program():
 	saveAll()
 	print u"Программа в разработке..."
 
-import sys
-import os
-import types
-import MyLib
-from PyQt4 import QtCore, QtGui, uic
-from PyQt4.QtGui import QListWidget, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QColor
-
-
 
 
 class MainWindow(QtGui.QMainWindow):
@@ -80,9 +85,11 @@ class MainWindow(QtGui.QMainWindow):
 	def readConfigFile(self):
 		workingDirsList = []
 
-		curWorkingDir = u"C:\\Work\\Python\\TorrentManager"
+		curWorkingDir = os.path.dirname(os.path.abspath(__file__))
 		workingDirsList.append(curWorkingDir)
-		workingDirsList.append(u"C:\\Windows")
+		workingDirsList.append(u"C:\\Windows\\System32")
+
+		print sys.platform
 
 		self.workingDirsList = workingDirsList
 
