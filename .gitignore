@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+# Мои временные файлы
+tmp.py
+
 # C extensions
 *.so
 

@@ -12,6 +12,12 @@ if not "win32" in sys.platform:
 	print u"Неизвестная ОС. sys.platrform = \"{0}\""
 	sys.exit()
 
+# определяем местоположение приложения
+if __name__ == "__main__":
+	APP_DIR = os.path.dirname(os.path.abspath(__file__))
+else:
+	APP_DIR = os.path.dirname(__file__)
+
 
 """
 -----------------------------------------------------
@@ -28,50 +34,6 @@ if not "win32" in sys.platform:
 	6.	Выход.
 """
 
-"""
-Инициализация структур данных
-"""
-def initialization():
-	pass
-
-
-"""
-Чтение конфигурационного файла
-"""
-def readConfigurationFile():
-	pass
-
-
-"""
-Управление списком рабочих каталогов
-"""
-def workingDirListManagement():
-	pass
-
-
-"""
-Управление рабочим каталогом
-"""
-def workingDirManagement():
-	pass
-
-
-"""
-Сохранение несохраненных данных
-"""
-def saveAll():
-	pass
-
-
-def run_program():
-	initialization()
-	readConfigurationFile()
-	workingDirListManagement()
-	workingDirManagement()
-	saveAll()
-	print u"Программа в разработке..."
-
-
 
 class MainWindow(QtGui.QMainWindow):
 	def __init__(self):
@@ -85,11 +47,9 @@ class MainWindow(QtGui.QMainWindow):
 	def readConfigFile(self):
 		workingDirsList = []
 
-		curWorkingDir = os.path.dirname(os.path.abspath(__file__))
-		workingDirsList.append(curWorkingDir)
-		workingDirsList.append(u"C:\\Windows\\System32")
-
-		print sys.platform
+#		curWorkingDir = os.path.dirname(os.path.abspath(__file__))
+#		workingDirsList.append(curWorkingDir)
+#		workingDirsList.append(u"C:\\Windows\\System32")
 
 		self.workingDirsList = workingDirsList
 
@@ -98,13 +58,16 @@ class MainWindow(QtGui.QMainWindow):
 	def manageWorkingDirsList(self):
 		self.leMain.setText(u"Управление списком рабочих каталогов")
 		self.lwMain.clear()
-		self.lwMain.addItems(self.workingDirsList)
-		self.lwMain.setFocus()
-		self.lwMain.setCurrentRow(0)
-		self.showDirContent(0)
 
 		self.lwMain.currentRowChanged.connect(self.showDirContent)
-		self.lwMain.keyPressEvent = self.keyPressedOnManageWorkingDirsList
+		self.lwMain.keyPressEvent = self.keyPressedOnManageWorkingDirsList		
+
+		self.lwMain.setFocus()
+		self.lwMain.setCurrentRow(0)
+
+		if self.workingDirsList:
+			self.lwMain.addItems(self.workingDirsList)
+			self.showDirContent(0)
 
 	def showDirContent(self, rowNum):
 		dirPath = unicode(self.lwMain.item(rowNum).text())
@@ -176,14 +139,13 @@ class MainWindow(QtGui.QMainWindow):
 		QListWidget.keyPressEvent(self.lwMain, keyEvent)
 
 		
-
-
-if __name__ == "__main__":
-
+def main():
 	app = QtGui.QApplication(sys.argv)
 	mainWindow = MainWindow()
 	mainWindow.show()
-
-
 	sys.exit(app.exec_())
+
+
+if __name__ == "__main__":
+	main()
 
