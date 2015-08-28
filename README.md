@@ -1,2 +1,2 @@
 # DLFManager
- Managing uploaded files (via Torrent, DC, etc.)
+ Managing downloaded files (via Torrent, DC, etc.)

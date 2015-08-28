@@ -4,6 +4,7 @@ __pycache__/
 
 # Мои временные файлы
 tmp.py
+download_dirs.cfg
 
 # C extensions
 *.so
