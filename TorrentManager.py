@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import errno
 import sys
 import os
 import types
@@ -36,21 +37,37 @@ else:
 
 
 class MainWindow(QtGui.QMainWindow):
-	def __init__(self):
+	CFG_FILE_NAME = u"download_dirs.cfg"
+
+	def __init__(self, qApp):
+		self.qApp = qApp
 		QtGui.QMainWindow.__init__(self)
 		uic.loadUi(os.path.abspath(u"MainWindow.ui"), self)
 		self.setWindowIcon()
 		self.readConfigFile()
 		self.manageWorkingDirsList()
 
+
 	# читаем файл конфигурации
 	def readConfigFile(self):
 		workingDirsList = []
-
-#		curWorkingDir = os.path.dirname(os.path.abspath(__file__))
-#		workingDirsList.append(curWorkingDir)
-#		workingDirsList.append(u"C:\\Windows\\System32")
-
+		cfgFileName = u"\\".join([APP_DIR, self.CFG_FILE_NAME])
+		try:
+			f = open(cfgFileName)
+		except IOError as e:
+			if e.errno != errno.ENOENT:
+				print u"{0}. Код ошибки: {1}".format(e.strerror, e.errno)
+				print u"Программа завершается."
+				sys.exit()
+		except:
+			print u"Неизвестная ошибка."
+			sys.exit()
+		else:
+			for pathStr in f:
+				pathStr = pathStr.replace("\n", "")
+				if pathStr:
+					workingDirsList.append(pathStr)
+			f.close()
 		self.workingDirsList = workingDirsList
 
 
@@ -63,11 +80,12 @@ class MainWindow(QtGui.QMainWindow):
 		self.lwMain.keyPressEvent = self.keyPressedOnManageWorkingDirsList		
 
 		self.lwMain.setFocus()
-		self.lwMain.setCurrentRow(0)
 
 		if self.workingDirsList:
 			self.lwMain.addItems(self.workingDirsList)
 			self.showDirContent(0)
+
+		self.lwMain.setCurrentRow(0)
 
 	def showDirContent(self, rowNum):
 		dirPath = unicode(self.lwMain.item(rowNum).text())
@@ -141,7 +159,7 @@ class MainWindow(QtGui.QMainWindow):
 		
 def main():
 	app = QtGui.QApplication(sys.argv)
-	mainWindow = MainWindow()
+	mainWindow = MainWindow(app)
 	mainWindow.show()
 	sys.exit(app.exec_())
 
