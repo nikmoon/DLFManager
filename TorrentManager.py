@@ -19,6 +19,9 @@ if __name__ == "__main__":
 else:
 	APP_DIR = os.path.dirname(__file__)
 
+# полное имя файла конфигурации по умолчанию
+CFG_FILE_NAME = u"\\".join([APP_DIR, u"download_dirs.cfg"])
+
 
 """
 -----------------------------------------------------
@@ -36,8 +39,8 @@ else:
 """
 
 
+
 class MainWindow(QtGui.QMainWindow):
-	CFG_FILE_NAME = u"download_dirs.cfg"
 
 	def __init__(self, qApp):
 		self.qApp = qApp
@@ -45,15 +48,18 @@ class MainWindow(QtGui.QMainWindow):
 		uic.loadUi(os.path.abspath(u"MainWindow.ui"), self)
 		self.setWindowIcon()
 		self.readConfigFile()
-		self.manageWorkingDirsList()
+		self.manageWorkingDirs()
 
+
+	BORDER_STR = "<>"
+	WKDIR_LINE = "->"
+	ENTRY_STR = ">"
 
 	# читаем файл конфигурации
 	def readConfigFile(self):
-		workingDirsList = []
-		cfgFileName = u"\\".join([APP_DIR, self.CFG_FILE_NAME])
+		workingDirs = {}
 		try:
-			f = open(cfgFileName)
+			f = open(CFG_FILE_NAME)
 		except IOError as e:
 			if e.errno != errno.ENOENT:
 				print u"{0}. Код ошибки: {1}".format(e.strerror, e.errno)
@@ -63,16 +69,40 @@ class MainWindow(QtGui.QMainWindow):
 			print u"Неизвестная ошибка."
 			sys.exit()
 		else:
-			for pathStr in f:
-				pathStr = pathStr.replace("\n", "")
-				if pathStr:
-					workingDirsList.append(pathStr)
+			borderCnt = 0
+			for line in f:
+				if line.startswith(self.BORDER_STR):
+					if borderCnt > 0:
+						break
+					borderCnt += 1
+				elif line.startswith(self.WKDIR_LINE):
+					wkDirName = line[2:-1].decode("utf-8")
+					workingDirs[wkDirName] = {"entries": {}, "new": [], "exists": os.path.exists(wkDirName)}
+					wkDir = workingDirs[wkDirName]
+				elif line.startswith(self.ENTRY_STR):
+					entryName = line[1:-1].decode("utf-8")
+					wkDir["entries"][entryName] = {"links": [], "exists": os.path.exists(u"\\".join([wkDirName, entryName]))}
+					entryLinks = wkDir["entries"][entryName]["links"]
+				else:
+					linkName = line[:-1].decode("utf-8")
+					entryLinks.append(linkName)
+
+			# ищем неучтенные элементы в рабочих каталогах
+			for wkDirName in workingDirs:
+				wkDir = workingDirs[wkDirName]
+				if wkDir["exists"]:
+					entries = MyLib.getEntries(wkDirName)
+					for entry in entries:
+						if not entry in wkDir["entries"]:
+							wkDir["new"].append(entry)
+
 			f.close()
-		self.workingDirsList = workingDirsList
+
+		self.workingDirs = workingDirs
 
 
 	# переходим к управлению списком рабочих каталогов
-	def manageWorkingDirsList(self):
+	def manageWorkingDirs(self):
 		self.leMain.setText(u"Управление списком рабочих каталогов")
 		self.lwMain.clear()
 
@@ -81,80 +111,51 @@ class MainWindow(QtGui.QMainWindow):
 
 		self.lwMain.setFocus()
 
-		if self.workingDirsList:
-			self.lwMain.addItems(self.workingDirsList)
-			self.showDirContent(0)
-
+		for wkDirName in self.workingDirs:
+			item = QtGui.QListWidgetItem(wkDirName)
+			if not self.workingDirs[wkDirName]["exists"]:
+				item.setTextColor(QColor(255, 0, 0))
+			self.lwMain.addItem(item)
 		self.lwMain.setCurrentRow(0)
 
 	def showDirContent(self, rowNum):
-		dirPath = unicode(self.lwMain.item(rowNum).text())
-		self.leAux.setText(dirPath)
+		wkDirName = unicode(self.lwMain.item(rowNum).text())
+		self.leAux.setText(wkDirName)
 		self.lwAux.clear()
-		self.lwAux.addItems(MyLib.getEntries(dirPath))
+		for entry in self.workingDirs[wkDirName]["new"]:
+			item = QtGui.QListWidgetItem(entry)
+			item.setTextColor(QColor(0, 150, 0))
+			self.lwAux.addItem(item)
+		for entry in self.workingDirs[wkDirName]["entries"]:
+			item = QtGui.QListWidgetItem(entry)
+			if not self.workingDirs[wkDirName]["entries"][entry]["exists"]:
+				item.setTextColor(QColor(255, 0, 0))
+			self.lwAux.addItem(item)
 		self.lwAux.setCurrentRow(0)
 
 	def keyPressedOnManageWorkingDirsList(self, keyEvent):
 		if keyEvent.key() == QtCore.Qt.Key_Escape:
-			#self.lwAux.clear()
-			#self.lwAux.addItem(u"Очищено...")
+			#self.lwMain = QListWidget()
+			#self.lwMain.currentRowChanged.disconnect(self.showDirContent)
+			#self.lwMain.currentRowChanged.disconnect()
 			pass
 		elif keyEvent.key() == QtCore.Qt.Key_Return:
 			self.lwAux.addItem(u"Поздравляю. Вы нажали клавишу Enter.")
 		else:
-			#self.lwAux.addItem(u"Нажали кнопочку?")
 			pass
 		QListWidget.keyPressEvent(self.lwMain, keyEvent)
-
-
-
-
-	def initialize(self):
-		self.leMain.setText(u"C:\\Work")
-		self.lwMain.addItems(MyLib.getEntries(u"C:\\Work"))
-		#self.lwMain.setCurrentRow(0)
-		self.lwMain.setFocus()
-
-		palette = self.lwMain.palette()
-		palette.setColor(QtGui.QPalette.Text, QColor(255,0,0))
-		self.lwMain.setPalette(palette)
-
-		self.leAux.setText(u"C:\\Work\\Python")
-		self.lwAux.addItems(MyLib.getEntries(unicode(self.leAux.text())))
-		#self.lwAux.setCurrentRow(0)
-
-
-		palette = self.lwAux.palette()
-		palette.setColor(QtGui.QPalette.Text, QColor(0,255,0))
-		self.lwAux.setPalette(palette)
-
-#		self.lwAux.setTextColor(QColor(255,0,0))
-#		self.lwAux.item(0).setTextColor(QColor(255,0,0))
-#		self.lwAux.item(1).setTextColor(QColor(0,255,0))
-#		self.lwAux.item(2).setTextColor(QColor(0,0,255))
-
-		self.lwMain.currentRowChanged.connect(self.onRowChanged)
-		self.lwMain.keyPressEvent = self.keyPressedInMainListWidget
 
 	def setWindowIcon(self):
 		myIcon = QtGui.QIcon(os.path.abspath(u"qt-logo.png"))
 		QtGui.QMainWindow.setWindowIcon(self, myIcon)		
 
-
-	def onRowChanged(self, rowNum):
-		self.lwAux.addItem(u"Активирована новая строка, ее номер = {0}".format(rowNum))
-
-	def keyPressedInMainListWidget(self, keyEvent):
-		if keyEvent.key() == QtCore.Qt.Key_Escape:
-			#self.lwAux.clear()
-			#self.lwAux.addItem(u"Очищено...")
-			pass
-		elif keyEvent.key() == QtCore.Qt.Key_Return:
-			self.lwAux.addItem(u"Поздравляю. Вы нажали клавишу Enter.")
-		else:
-			#self.lwAux.addItem(u"Нажали кнопочку?")
-			pass
-		QListWidget.keyPressEvent(self.lwMain, keyEvent)
+	"""
+	пример использования палитры
+	def initialize(self):
+		palette = self.lwAux.palette()
+		palette.setColor(QtGui.QPalette.Text, QColor(0,255,0))
+		self.lwAux.setPalette(palette)
+	"""
 
 		
 def main():
@@ -166,4 +167,6 @@ def main():
 
 if __name__ == "__main__":
 	main()
+	pass
+
 
