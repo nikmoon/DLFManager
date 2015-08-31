@@ -44,7 +44,7 @@
         <item>
          <widget class="QListWidget" name="lwMain">
           <property name="focusPolicy">
-           <enum>Qt::TabFocus</enum>
+           <enum>Qt::StrongFocus</enum>
           </property>
          </widget>
         </item>
@@ -74,7 +74,7 @@
         <item>
          <widget class="QListWidget" name="lwAux">
           <property name="focusPolicy">
-           <enum>Qt::TabFocus</enum>
+           <enum>Qt::StrongFocus</enum>
           </property>
          </widget>
         </item>
