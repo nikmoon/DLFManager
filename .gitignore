@@ -5,7 +5,7 @@ __pycache__/
 # Мои временные файлы
 tmp.py
 download_dirs.cfg
-download_dirs.state
+*.bak
 
 # C extensions
 *.so
