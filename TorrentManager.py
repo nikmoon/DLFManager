@@ -9,10 +9,6 @@ from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QListWidget, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QColor
 
 
-if not "win32" in sys.platform:
-	print u"Неизвестная ОС. sys.platrform = \"{0}\""
-	sys.exit()
-
 # определяем местоположение приложения
 if __name__ == "__main__":
 	APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -118,20 +114,21 @@ class MainWindow(QtGui.QMainWindow):
 			self.lwMain.addItem(item)
 		self.lwMain.setCurrentRow(0)
 
+
 	def showDirContent(self, rowNum):
 		wkDirName = unicode(self.lwMain.item(rowNum).text())
 		self.leAux.setText(wkDirName)
 		self.lwAux.clear()
-		for entry in self.workingDirs[wkDirName]["new"]:
+		for entry in self.workingDirs[wkDirName]["new"]:	# неучтенные элементы в рабочем каталоге
 			item = QtGui.QListWidgetItem(entry)
 			item.setTextColor(QColor(0, 150, 0))
 			self.lwAux.addItem(item)
-		for entry in self.workingDirs[wkDirName]["entries"]:
+		for entry in self.workingDirs[wkDirName]["entries"]:	# учтенные элементы
 			item = QtGui.QListWidgetItem(entry)
-			if not self.workingDirs[wkDirName]["entries"][entry]["exists"]:
+			if not self.workingDirs[wkDirName]["entries"][entry]["exists"]:		# учтенный элемент уже не существует
 				item.setTextColor(QColor(255, 0, 0))
 			self.lwAux.addItem(item)
-		self.lwAux.setCurrentRow(0)
+
 
 	def keyPressedOnManageWorkingDirsList(self, keyEvent):
 		if keyEvent.key() == QtCore.Qt.Key_Escape:

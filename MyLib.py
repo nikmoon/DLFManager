@@ -14,7 +14,6 @@ from __future__ import print_function
 import datetime as dt
 from datetime import date, datetime, timedelta
 import os
-from cx_Oracle import connect as ora_connect
 
 #
 # Кириллические названия месяцев в Unicode
@@ -251,24 +250,6 @@ class DatetimeRange(object):
 
 	def index(self, dt_val):
 		return self.dt_range.index(dt_val)
-
-
-#   ------------------------------------
-#   Соединение с базой данных Oracle
-#	------------------------------------
-class DB_Conn(object):
-
-	def __init__(self, user = "stok", password = "tok"):
-		self.conn = ora_connect(CONNECT_STRING.format(user, password))
-		self.cur = self.conn.cursor()
-
-	def close(self):
-		self.cur.close()
-		self.conn.close()
-
-	def commit(self):
-		self.conn.commit()
-
 
 
 def testStrToDateTime():
