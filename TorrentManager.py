@@ -4,7 +4,7 @@ import errno
 import sys
 import os
 import types
-import MyLib
+from DLFManager import MyLib
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QListWidget, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QColor
 
