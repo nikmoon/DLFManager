@@ -8,7 +8,7 @@ import MyLib
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QListWidget, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QColor
 
-from TorrentManager import APP_DIR, CFG_FILE_BASE_NAME, CFG_FILE_NAME
+from DLFManager import APP_DIR, CFG_FILE_BASE_NAME, CFG_FILE_NAME
 
 '''
 # определяем местоположение приложения

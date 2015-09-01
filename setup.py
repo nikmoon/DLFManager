@@ -3,9 +3,9 @@
 from distutils.core import setup
 
 setup(
-	name = "TorrentManager",
+	name = "DLFManager",
 	version = "0.1",
 	scripts = ['TorrentManager.py'],
-	packages = ['TorrentManager'],
-	package_data = {'TorrentManager': ['qt-logo.png', 'MainWindow.ui', 'LICENSE', 'README.md']},
+	packages = ['DLFManager'],
+	package_data = {'DLFManager': ['qt-logo.png', 'MainWindow.ui', 'LICENSE', 'README.md']},
 )
