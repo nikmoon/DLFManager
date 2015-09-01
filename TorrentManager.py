@@ -8,7 +8,9 @@ import MyLib
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QListWidget, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QColor
 
+from TorrentManager import APP_DIR, CFG_FILE_BASE_NAME, CFG_FILE_NAME
 
+'''
 # определяем местоположение приложения
 if __name__ == "__main__":
 	APP_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -18,6 +20,7 @@ else:
 # полное имя файла конфигурации по умолчанию
 CFG_FILE_BASE_NAME = u"download_dirs.cfg"
 CFG_FILE_NAME = os.path.join(APP_DIR, CFG_FILE_BASE_NAME)
+'''
 
 
 """
@@ -42,7 +45,7 @@ class MainWindow(QtGui.QMainWindow):
 	def __init__(self, qApp):
 		self.qApp = qApp
 		QtGui.QMainWindow.__init__(self)
-		uic.loadUi(os.path.abspath(u"MainWindow.ui"), self)
+		uic.loadUi(os.path.join(APP_DIR, u"MainWindow.ui"), self)
 		self.setWindowIcon()
 		self.readConfigFile()
 
