@@ -3,7 +3,7 @@
 import os
 
 # определяем местоположение пакета
-APP_DIR = os.path.dirname(__file__)
+APP_DIR = unicode(os.path.dirname(__file__))
 
 # полное имя файла конфигурации по умолчанию
 CFG_FILE_BASE_NAME = u"download_dirs.cfg"

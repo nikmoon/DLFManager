@@ -8,19 +8,8 @@ import MyLib
 from PyQt4 import QtCore, QtGui, uic
 from PyQt4.QtGui import QListWidget, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QColor
 
+from DLFManager.ConfigFile import ConfigFile
 from DLFManager import APP_DIR, CFG_FILE_BASE_NAME, CFG_FILE_NAME
-
-'''
-# определяем местоположение приложения
-if __name__ == "__main__":
-	APP_DIR = os.path.dirname(os.path.abspath(__file__))
-else:
-	APP_DIR = os.path.dirname(__file__)
-
-# полное имя файла конфигурации по умолчанию
-CFG_FILE_BASE_NAME = u"download_dirs.cfg"
-CFG_FILE_NAME = os.path.join(APP_DIR, CFG_FILE_BASE_NAME)
-'''
 
 
 """
@@ -47,91 +36,15 @@ class MainWindow(QtGui.QMainWindow):
 		QtGui.QMainWindow.__init__(self)
 		uic.loadUi(os.path.join(APP_DIR, u"MainWindow.ui"), self)
 		self.setWindowIcon()
-		self.readConfigFile()
+		self.configFile = ConfigFile()
+		self.workingDirs = self.configFile.read()
 
-		self.action.triggered.connect(self.backupConfigFile)
-		self.action_2.triggered.connect(self.saveConfigFileOnMenuAction)
+		self.action.triggered.connect(self.configFile.backup)
+		self.action_2.triggered.connect(self.configFile.saveDefault)
+
+		self.walkDir = APP_DIR
 
 		self.startManageWorkingDirs()
-
-	BORDER_STR = "<>"
-	WKDIR_LINE = "->"
-	ENTRY_STR = ">"
-
-	# читаем файл конфигурации
-	def readConfigFile(self, fileName = CFG_FILE_NAME):
-		workingDirs = {}
-		try:
-			f = open(fileName)
-		except IOError as e:
-			if e.errno != errno.ENOENT:
-				print u"{0}. Код ошибки: {1}".format(e.strerror, e.errno)
-				print u"Программа завершается."
-				sys.exit()
-		except:
-			print u"Неизвестная ошибка."
-			sys.exit()
-		else:
-			borderCnt = 0		# число прочитанных строк, содержащих BORDER_STR в начале
-			for line in f:
-				if line.startswith(self.BORDER_STR):
-					if borderCnt > 0:
-						break
-					borderCnt += 1
-				elif line.startswith(self.WKDIR_LINE):
-					wkDirName = line[2:-1].decode("utf-8")
-					workingDirs[wkDirName] = {"entries": {}, "new": [], "exists": os.path.exists(wkDirName)}
-					wkDir = workingDirs[wkDirName]
-				elif line.startswith(self.ENTRY_STR):
-					entryName = line[1:-1].decode("utf-8")
-					wkDir["entries"][entryName] = {"links": [], "exists": os.path.exists(u"\\".join([wkDirName, entryName]))}
-					entryLinks = wkDir["entries"][entryName]["links"]
-				else:
-					linkName = line[:-1].decode("utf-8")
-					entryLinks.append(linkName)
-
-			# ищем неучтенные элементы в рабочих каталогах
-			for wkDirName in workingDirs:
-				wkDir = workingDirs[wkDirName]
-				if wkDir["exists"]:
-					entries = MyLib.getEntries(wkDirName)
-					for entry in entries:
-						if not entry in wkDir["entries"]:
-							wkDir["new"].append(entry)
-
-			f.close()
-
-		self.workingDirs = workingDirs
-
-	# сохранение файла конфигурации при выборе пункта в меню
-	def saveConfigFileOnMenuAction(self):
-		self.saveConfigFile()
-
-	# сохранение файла конфигурации с заданным именем
-	def saveConfigFile(self, fileName = CFG_FILE_NAME):
-		print u"Типа сохранили файл конфигурации. Имя: {0}".format(fileName)
-		f = open(fileName, "w")
-		f.write(self.BORDER_STR + "\n")
-		for wkDirName in self.workingDirs:
-			wkDir = self.workingDirs[wkDirName]
-			f.write("{0}{1}\n".format(self.WKDIR_LINE, wkDirName.encode("utf-8")))
-			for entryName in wkDir["entries"]:
-				entry = wkDir["entries"][entryName]
-				f.write("{0}{1}\n".format(self.ENTRY_STR, entryName.encode("utf-8")))
-				for link in entry["links"]:
-					f.write("{0}\n".format(link.encode("utf-8")))
-		f.write(self.BORDER_STR + "\n")
-		f.close()
-
-
-	def backupConfigFile(self):
-		filesList = [int(fileName.replace(CFG_FILE_BASE_NAME, "").replace(u".bak", "")) for fileName in MyLib.getFiles(APP_DIR) if fileName.endswith(u".bak")]
-		if filesList:
-			maxNum = max(filesList) + 1
-		else:
-			maxNum = 0
-		self.saveConfigFile(os.path.join(APP_DIR, u"{0}{1}.bak".format(CFG_FILE_BASE_NAME, maxNum)))
-
 
 	# переходим к управлению списком рабочих каталогов
 	def startManageWorkingDirs(self):
@@ -171,7 +84,6 @@ class MainWindow(QtGui.QMainWindow):
 			lWidget.addItem(item)
 		
 
-
 	# Обработка нажатий клавиш в главном QListWidget в режиме управления рабочими каталогами
 	def keyPressedOnManageWorkingDirsList(self, keyEvent):
 		if keyEvent.key() == QtCore.Qt.Key_Escape:
@@ -184,9 +96,57 @@ class MainWindow(QtGui.QMainWindow):
 				self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
 				self.startManageSelectedWkDir()
 				return
+		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим к добавлению нового рабочего каталога
+			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+			self.startAddingNewWorkingDir()
 		else:
 			pass
 		QListWidget.keyPressEvent(self.lwMain, keyEvent)
+
+
+	def startAddingNewWorkingDir(self):
+
+		self.lwMain.currentRowChanged.disconnect(self.showDirContent)
+		self.lwMain.keyPressEvent = self.keyPressedOnAddingNewWorkingDir
+		self.lwMain.clear()
+		self.showWalkDirEntries(self.lwMain)
+
+
+	def keyPressedOnAddingNewWorkingDir(self, keyEvent):
+		if keyEvent.key() == QtCore.Qt.Key_Return:		# переходим во вложенный каталог
+			pathName = os.path.join(self.walkDir, unicode(self.lwMain.currentItem().text()))
+			if os.path.isdir(pathName):
+				self.walkDir = pathName
+				self.showWalkDirEntries(self.lwMain)
+		elif keyEvent.key() == QtCore.Qt.Key_Backspace:		# переходим в каталог выше
+			self.walkDir = os.path.dirname(self.walkDir)
+			self.showWalkDirEntries(self.lwMain)
+		elif keyEvent.key() == QtCore.Qt.Key_Escape:		# отмена добавления нового рабочего каталога
+			QListWidget.keyPressEvent(self.lwMain, keyEvent)
+			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+			self.startManageWorkingDirs()
+			return
+		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим обратно к управлению списком рабочих каталогов
+			wkDirName = os.path.join(self.walkDir, self.walkDir)
+			if not wkDirName in self.workingDirs:
+				QListWidget.keyPressEvent(self.lwMain, keyEvent)
+				self.workingDirs[wkDirName] = {"entries": {}, "new": [], "exists": os.path.exists(wkDirName)}
+				wkDir = self.workingDirs[wkDirName]
+				wkDir["new"] = MyLib.getEntries(wkDirName)
+				self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+				self.startManageWorkingDirs()
+				return
+		QListWidget.keyPressEvent(self.lwMain, keyEvent)
+
+
+	def showWalkDirEntries(self, lw):
+		self.leMain.setText(self.walkDir)
+		lw.clear()
+		entryList = MyLib.getEntries(self.walkDir)
+		for entry in entryList:
+			item = QtGui.QListWidgetItem(entry)
+			lw.addItem(item)
+
 
 
 	def startManageSelectedWkDir(self):
@@ -201,7 +161,7 @@ class MainWindow(QtGui.QMainWindow):
 
 	
 	def keyPressedOnManageSelectedWkDir(self, keyEvent):
-		if keyEvent.key() == QtCore.Qt.Key_Backspace:		# возвращаемся к управлению рабочими каталогами
+		if keyEvent.key() == QtCore.Qt.Key_Escape:		# возвращаемся к управлению рабочими каталогами
 			QListWidget.keyPressEvent(self.lwMain, keyEvent)
 			self.lwMain.currentRowChanged.disconnect(self.showLinksForEntry)
 			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
@@ -222,7 +182,7 @@ class MainWindow(QtGui.QMainWindow):
 			self.lwAux.addItem(QtGui.QListWidgetItem(u"Здесь должны быть ссылки"))
 
 	def setWindowIcon(self):
-		myIcon = QtGui.QIcon(os.path.abspath(u"qt-logo.png"))
+		myIcon = QtGui.QIcon(os.path.join(APP_DIR, u"qt-logo.png"))
 		QtGui.QMainWindow.setWindowIcon(self, myIcon)		
 
 	"""
