@@ -38,7 +38,8 @@ class MainWindow(QtGui.QMainWindow):
 		self.setWindowIcon(MAIN_WINDOW_ICON)
 		self.configFile = ConfigFile()
 		self.workingDirs = self.configFile.read()
-		self.walkDir = APP_DIR
+		#self.walkDir = APP_DIR
+		self.walkDir = u"C:\\"
 
 		self.action.triggered.connect(self.configFile.backup)
 		self.action_2.triggered.connect(self.configFile.saveDefault)
@@ -67,104 +68,72 @@ class MainWindow(QtGui.QMainWindow):
 			if not self.workingDirs[wkDirName]["exists"]:
 				item.setTextColor(QColor(255, 0, 0))
 			self.lwMain.addItem(item)
-		self.lwMain.setCurrentRow(0)
 
 
 	def onChangeCurrentWorkingDir(self, rowNum):
-		self.showWorkingDirContent(unicode(self.lwMain.item(rowNum).text()), self.lwAux)
-
-
-	def showWorkingDirContent(self, wkDirName, lw):
-		lw.bindedLineEdit.setText(wkDirName)
-		lw.clear()
-		wkDir = self.workingDirs[wkDirName]
-		entryList = sorted(wkDir["new"] + wkDir["entries"].keys())
-		for entry in entryList:
-			item = MyListWidgetItem(entry)
-			if entry in wkDir["entries"]:
-				if not wkDir["entries"][entry]["exists"]:
-					item.setTextColor(QColor(255, 0, 0))
-			else:
-				item.setTextColor(QColor(0, 150, 0))
-			lw.addItem(item)
+		workingDirName = unicode(self.lwMain.item(rowNum).text())
+		self.showWorkingDirContent(workingDirName, self.lwAux)
 
 
 	def onKeyPress_lwMain_manageWorkingDirs(self, keyEvent):
-		if keyEvent.key() == QtCore.Qt.Key_Return:		# переход в режим управления выбранным рабочим каталогом
-			print u"Переходим в режим управления выбранным рабочим каталогом"
-		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим в режим добавления нового рабочего каталога
-			print u"Переходим в режим добавления нового рабочего каталога"
-		elif keyEvent.key() == QtCore.Qt.Key_Delete:	# удаление каталога из списка рабочих
-			print u"Удаление каталога из списка рабочих"
 		self.lwMain.defKeyPressEvent(keyEvent)
 
-
-	'''
-	# Обработка нажатий клавиш в главном QListWidget в режиме управления рабочими каталогами
-	def keyPressedOnManageWorkingDirsList(self, keyEvent):
-		if keyEvent.key() == QtCore.Qt.Key_Escape:
-			pass
-		elif keyEvent.key() == QtCore.Qt.Key_Return:	# переходим к управлению текущим рабочим каталогом
-			self.currentWkDir = unicode(self.lwMain.currentItem().text())
-			if self.workingDirs[self.currentWkDir]["exists"]:
-				QListWidget.keyPressEvent(self.lwMain, keyEvent)
-				#self.lwMain.currentRowChanged.disconnect(self.showDirContent)
-				self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
-				self.startManageSelectedWkDir()
-				return
-		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим к добавлению нового рабочего каталога
-			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+		if keyEvent.key() == QtCore.Qt.Key_Return:		# переход в режим управления выбранным рабочим каталогом
+			if self.lwMain.currentRow() >= 0:
+				self.selectedWorkingDir = unicode(self.lwMain.currentItem().text())
+				if self.workingDirs[self.selectedWorkingDir]["exists"]:
+					print u"Переходим в режим управления выбранным рабочим каталогом"
+					print self.selectedWorkingDir
+					self.startManageSelectedWorkingDir()
+			
+		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим в режим добавления нового рабочего каталога
+			print u"Переходим в режим добавления нового рабочего каталога"
 			self.startAddingNewWorkingDir()
-		else:
-			pass
-		QListWidget.keyPressEvent(self.lwMain, keyEvent)
-	'''
+		elif keyEvent.key() == QtCore.Qt.Key_Delete:	# удаление каталога из списка рабочих
+			print u"Удаление каталога из списка рабочих"
 
 
+	# Режим добавления нового рабочего каталога
 	def startAddingNewWorkingDir(self):
-		self.lwMain.currentRowChanged.disconnect(self.showDirContent)
-		self.lwMain.keyPressEvent = self.keyPressedOnAddingNewWorkingDir
-		self.lwMain.clear()
-		self.showWalkDirEntries(self.lwMain)
+		self.lwAux.setFocusPolicy(Qt.NoFocus)
+		self.lwMain.currentRowChanged.disconnect(self.onChangeCurrentWorkingDir)
+		self.lwMain.keyPressEvent = self.onKeyPress_lwMain_addingNewWorkingDir
+		self.showDirContent(self.walkDir, self.lwMain)
 
 
-	def keyPressedOnAddingNewWorkingDir(self, keyEvent):
-		if keyEvent.key() == QtCore.Qt.Key_Return:		# переходим во вложенный каталог
-			pathName = os.path.join(self.walkDir, unicode(self.lwMain.currentItem().text()))
-			if os.path.isdir(pathName):
-				self.walkDir = pathName
-				self.showWalkDirEntries(self.lwMain)
-		elif keyEvent.key() == QtCore.Qt.Key_Backspace:		# переходим в каталог выше
-			self.walkDir = os.path.dirname(self.walkDir)
-			self.showWalkDirEntries(self.lwMain)
-		elif keyEvent.key() == QtCore.Qt.Key_Escape:		# отмена добавления нового рабочего каталога
-			QListWidget.keyPressEvent(self.lwMain, keyEvent)
-			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+	def onKeyPress_lwMain_addingNewWorkingDir(self, keyEvent):
+		self.lwMain.defKeyPressEvent(keyEvent)
+
+		if keyEvent.key() == QtCore.Qt.Key_Escape:		# возвращаемся в режим управления списком рабочих каталогов
+			print u"Возвращаемся в режим управления списком рабочих каталогов"
+			self.lwAux.setFocusPolicy(Qt.StrongFocus)
 			self.startManageWorkingDirs()
-			return
-		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим обратно к управлению списком рабочих каталогов
-			wkDirName = os.path.join(self.walkDir, self.walkDir)
-			if not wkDirName in self.workingDirs:
-				QListWidget.keyPressEvent(self.lwMain, keyEvent)
-				self.workingDirs[wkDirName] = {"entries": {}, "new": [], "exists": os.path.exists(wkDirName)}
-				wkDir = self.workingDirs[wkDirName]
-				wkDir["new"] = MyLib.getEntries(wkDirName)
-				self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+
+		elif keyEvent.key() == QtCore.Qt.Key_Return:	# переход во вложенный каталог
+			if self.lwMain.currentRow() >= 0:
+				entryPath = os.path.join(self.walkDir, unicode(self.lwMain.currentItem().text()))
+				if os.path.isdir(entryPath):
+					self.walkDir = entryPath
+					self.showDirContent(entryPath, self.lwMain)
+
+		elif keyEvent.key() == QtCore.Qt.Key_Backspace:	# переход в каталог уровнем выше
+			self.walkDir = os.path.dirname(self.walkDir)
+			self.showDirContent(self.walkDir, self.lwMain)
+
+		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# текущий каталог выбран в качестве нового рабочего
+			if self.walkDir in self.workingDirs:
+				QMessageBox(text = u"Каталог {0} уже есть в списке рабочих".format(self.walkDir), parent = self).exec_()
+			else:
+				self.workingDirs[self.walkDir] = {"entries": {}, "new": MyLib.getEntries(self.walkDir), "exists": True}
+				print u"Возвращаемся в режим управления списком рабочих каталогов"
+				self.lwAux.setFocusPolicy(Qt.StrongFocus)
 				self.startManageWorkingDirs()
-				return
-		QListWidget.keyPressEvent(self.lwMain, keyEvent)
 
 
-	def showWalkDirEntries(self, lw):
-		self.leMain.setText(self.walkDir)
-		lw.clear()
-		entryList = MyLib.getEntries(self.walkDir)
-		for entry in entryList:
-			item = QtGui.QListWidgetItem(entry)
-			lw.addItem(item)
+	def startManageSelectedWorkingDir(self):
+		pass
 
-
-
+	'''
 	def startManageSelectedWkDir(self):
 		self.leMain.setText(self.currentWkDir)
 		self.lwMain.clear()
@@ -191,8 +160,36 @@ class MainWindow(QtGui.QMainWindow):
 				item = QtGui.QListWidgetItem(link)
 				self.lwAux.addItem(item)
 			self.lwAux.addItem(QtGui.QListWidgetItem(u"Здесь должны быть ссылки"))
+	'''
 
 
+	# Вывод содержимого заданного каталога в заданном виджете QListWidget
+	def showDirContent(self, dirPath, lw):
+		lw.bindedLineEdit.setText(dirPath)
+		lw.clear()
+		entryList = sorted(MyLib.getEntries(dirPath))
+		for entry in entryList:
+			item = MyListWidgetItem(entry)
+			lw.addItem(item)
+
+
+	# Вывод данных рабочего каталога wkDirName в виджете lw (QListWidget)
+	def showWorkingDirContent(self, wkDirName, lw):
+		lw.bindedLineEdit.setText(wkDirName)
+		lw.clear()
+		wkDir = self.workingDirs[wkDirName]
+		entryList = sorted(wkDir["new"] + wkDir["entries"].keys())
+		for entry in entryList:
+			item = MyListWidgetItem(entry)
+			if entry in wkDir["entries"]:
+				if not wkDir["entries"][entry]["exists"]:
+					item.setTextColor(QColor(255, 0, 0))
+			else:
+				item.setTextColor(QColor(0, 150, 0))
+			lw.addItem(item)
+
+
+	# Достаем пользователя при закрытии приложения
 	def closeEvent(self, event):
 		msgBox = QMessageBox(text = u"Действительно закрыть приложение?", parent = self)
 		msgBox.setWindowTitle(u"Подтверждение")
