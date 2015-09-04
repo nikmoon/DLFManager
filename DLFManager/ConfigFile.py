@@ -56,6 +56,7 @@ class ConfigFile(object):
 			f.close()
 
 		self.workingDirs = workingDirs
+		self.needToSave = False
 		return workingDirs
 
 	# сохранение файла конфигурации с заданным именем
@@ -75,6 +76,7 @@ class ConfigFile(object):
 		f.write(BORDER_STR + "\n")
 		f.close()
 		print u"Файл конфигурации сохранен: {0}".format(fileName)
+		self.needToSave = False
 
 	def saveDefault(self):
 		self.save()

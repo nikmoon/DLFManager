@@ -38,8 +38,7 @@ class MainWindow(QtGui.QMainWindow):
 		self.setWindowIcon(MAIN_WINDOW_ICON)
 		self.configFile = ConfigFile()
 		self.workingDirs = self.configFile.read()
-		#self.walkDir = APP_DIR
-		self.walkDir = u"C:\\"
+		self.walkDir = APP_DIR
 
 		self.action.triggered.connect(self.configFile.backup)
 		self.action_2.triggered.connect(self.configFile.saveDefault)
@@ -59,20 +58,17 @@ class MainWindow(QtGui.QMainWindow):
 	# режим управления списком рабочих каталогов
 	def startManageWorkingDirs(self):
 		self.leMain.setText(u"Список рабочих каталогов:")
-		self.lwMain.clear()
 		self.lwMain.currentRowChanged.connect(self.onChangeCurrentWorkingDir)
 		self.lwMain.keyPressEvent = self.onKeyPress_lwMain_manageWorkingDirs
+		self.showWorkingDirs(self.lwMain)
 		self.lwMain.setFocus()
-		for wkDirName in sorted(self.workingDirs):
-			item = MyListWidgetItem(wkDirName)
-			if not self.workingDirs[wkDirName]["exists"]:
-				item.setTextColor(QColor(255, 0, 0))
-			self.lwMain.addItem(item)
 
 
 	def onChangeCurrentWorkingDir(self, rowNum):
-		workingDirName = unicode(self.lwMain.item(rowNum).text())
-		self.showWorkingDirContent(workingDirName, self.lwAux)
+		if rowNum >= 0:
+			print "onChangeCurrentWorkingDir called, rowNum = {0}".format(rowNum)
+			workingDirName = unicode(self.lwMain.item(rowNum).text())
+			self.showWorkingDirContent(workingDirName, self.lwAux)
 
 
 	def onKeyPress_lwMain_manageWorkingDirs(self, keyEvent):
@@ -84,21 +80,31 @@ class MainWindow(QtGui.QMainWindow):
 				if self.workingDirs[self.selectedWorkingDir]["exists"]:
 					print u"Переходим в режим управления выбранным рабочим каталогом"
 					print self.selectedWorkingDir
-					self.startManageSelectedWorkingDir()
+					self.lwMain.currentRowChanged.disconnect(self.onChangeCurrentWorkingDir)
+					self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+					self.startManageSelectedWorkingDir(self.selectedWorkingDir)
 			
 		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим в режим добавления нового рабочего каталога
 			print u"Переходим в режим добавления нового рабочего каталога"
+			self.lwMain.currentRowChanged.disconnect(self.onChangeCurrentWorkingDir)
+			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
 			self.startAddingNewWorkingDir()
+
 		elif keyEvent.key() == QtCore.Qt.Key_Delete:	# удаление каталога из списка рабочих
-			print u"Удаление каталога из списка рабочих"
+			if self.lwMain.count():
+				self.selectedWorkingDir = unicode(self.lwMain.currentItem().text())
+				print u"Удаление каталога из списка рабочих: {0}".format(self.selectedWorkingDir)
+				del self.workingDirs[self.selectedWorkingDir]
+				self.configFile.needToSave = True
+				self.showWorkingDirs(self.lwMain)
 
 
 	# Режим добавления нового рабочего каталога
 	def startAddingNewWorkingDir(self):
 		self.lwAux.setFocusPolicy(Qt.NoFocus)
-		self.lwMain.currentRowChanged.disconnect(self.onChangeCurrentWorkingDir)
 		self.lwMain.keyPressEvent = self.onKeyPress_lwMain_addingNewWorkingDir
 		self.showDirContent(self.walkDir, self.lwMain)
+		self.lwMain.setCurrentRow(0)
 
 
 	def onKeyPress_lwMain_addingNewWorkingDir(self, keyEvent):
@@ -125,42 +131,77 @@ class MainWindow(QtGui.QMainWindow):
 				QMessageBox(text = u"Каталог {0} уже есть в списке рабочих".format(self.walkDir), parent = self).exec_()
 			else:
 				self.workingDirs[self.walkDir] = {"entries": {}, "new": MyLib.getEntries(self.walkDir), "exists": True}
+				self.configFile.needToSave = True
 				print u"Возвращаемся в режим управления списком рабочих каталогов"
 				self.lwAux.setFocusPolicy(Qt.StrongFocus)
 				self.startManageWorkingDirs()
 
 
-	def startManageSelectedWorkingDir(self):
-		pass
-
-	'''
-	def startManageSelectedWkDir(self):
-		self.leMain.setText(self.currentWkDir)
-		self.lwMain.clear()
-		self.lwMain.currentRowChanged.connect(self.showLinksForEntry)
-		self.lwMain.keyPressEvent = self.keyPressedOnManageSelectedWkDir
-		self.fillListWidgetWithDirContent(self.currentWkDir, self.lwMain)
-		self.lwMain.setCurrentRow(0)
-
-	# обработка нажатия клавиш в режиме управления рабочим каталогом
-	def keyPressedOnManageSelectedWkDir(self, keyEvent):
-		if keyEvent.key() == QtCore.Qt.Key_Escape:		# возвращаемся к управлению рабочими каталогами
-			self.lwMain.currentRowChanged.disconnect(self.showLinksForEntry)
-			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
-			self.startManageWorkingDirs()
-		QListWidget.keyPressEvent(self.lwMain, keyEvent)
-
-
-	def showLinksForEntry(self, rowNum):
-		entryName = unicode(self.lwMain.item(rowNum).text())
-		self.leAux.setText(u"Ссылки для {0}".format(entryName))
+	def startManageSelectedWorkingDir(self, wkDirName):
 		self.lwAux.clear()
-		if entryName in self.workingDirs[self.currentWkDir]["entries"]:
-			for link in self.workingDirs[self.currentWkDir]["entries"][entryName]["links"]:
-				item = QtGui.QListWidgetItem(link)
-				self.lwAux.addItem(item)
-			self.lwAux.addItem(QtGui.QListWidgetItem(u"Здесь должны быть ссылки"))
-	'''
+		self.showWorkingDirContent(wkDirName, self.lwMain)
+		self.lwMain.currentRowChanged.connect(self.onCurrentEntryChanged)
+		self.lwAux.currentRowChanged.connect(self.onCurrentLinkChanged)
+		self.lwMain.keyPressEvent = self.onKeyPress_lwMain_manageSelectedWorkingDir
+		self.lwAux.keyPressEvent = self.onKeyPress_lwAux_manageSelectedWorkingDir
+
+
+	def onCurrentEntryChanged(self, rowNum):
+		if rowNum >= 0:
+			entryName = unicode(self.lwMain.currentItem().text())
+			self.showLinks(entryName, self.lwAux)
+
+
+	def onCurrentLinkChanged(self, rowNum):
+		print rowNum
+
+
+	def onKeyPress_lwMain_manageSelectedWorkingDir(self, keyEvent):
+		self.lwMain.defKeyPressEvent(keyEvent)
+
+		if keyEvent.key() == Qt.Key_Escape:			# возвращаемся к управлению списком рабочих каталогов
+			self.lwMain.currentRowChanged.disconnect(self.onCurrentEntryChanged)
+			self.lwAux.currentRowChanged.disconnect(self.onCurrentLinkChanged)
+			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+			self.lwAux.keyPressEvent = self.lwAux.defKeyPressEvent
+			self.startManageWorkingDirs()
+
+
+	def onKeyPress_lwAux_manageSelectedWorkingDir(self, keyEvent):
+		self.lwAux.defKeyPressEvent(keyEvent)
+
+		key = keyEvent.key()
+
+		if key == Qt.Key_Escape:			# возвращаем фокус главному виджету
+			self.lwMain.setFocus()
+
+		elif key == Qt.Key_Insert:			# добавляем новую ссылку для выбранного элемента 
+			if self.lwMain.currentRow() >= 0:
+				entryName = unicode(self.lwMain.currentItem().text())
+				print u"Перешли в режим добавления новой ссылки для \"{0}\"".format(entryName)
+			pass
+
+
+	def showLinks(self, entryName, lw):
+		lw.bindedLineEdit.setText(u"Ссылки на \"{0}\":".format(entryName))
+		lw.clear()
+		if entryName in self.workingDirs[self.selectedWorkingDir]["entries"]:
+			entry = self.workingDirs[self.selectedWorkingDir]["entries"][entryName]
+			for link in entry["links"]:
+				item = MyListWidgetItem(link)
+				lw.addItem(item)
+			lw.addItem(MyListWidgetItem(u"Фиктивная ссылка..."))
+	
+
+	def showWorkingDirs(self, lw):
+		lw.clear()
+		for wkDirName in sorted(self.workingDirs):
+			item = MyListWidgetItem(wkDirName)
+			if not self.workingDirs[wkDirName]["exists"]:
+				item.setTextColor(QColor(255, 0, 0))
+			lw.addItem(item)
+		lw.setCurrentRow(0)
+
 
 
 	# Вывод содержимого заданного каталога в заданном виджете QListWidget
@@ -189,7 +230,7 @@ class MainWindow(QtGui.QMainWindow):
 			lw.addItem(item)
 
 
-	# Достаем пользователя при закрытии приложения
+	# "Достаем" пользователя вопросами при закрытии приложения
 	def closeEvent(self, event):
 		msgBox = QMessageBox(text = u"Действительно закрыть приложение?", parent = self)
 		msgBox.setWindowTitle(u"Подтверждение")
@@ -197,14 +238,22 @@ class MainWindow(QtGui.QMainWindow):
 		msgBox.setDefaultButton(QMessageBox.Yes)
 		if msgBox.exec_() == QMessageBox.No:
 			event.ignore()
-		elif ASK_SAVE_CFG_ON_EXIT:
-			msgBox.setText(u"Сохранить файл конфигурации?")
-			msgBox.setDefaultButton(QMessageBox.Yes)
-			if msgBox.exec_() == QMessageBox.Yes:
-				self.configFile.save()
-			event.accept()
 		else:
-			event.accept()
+			#if ASK_SAVE_CFG_ON_EXIT:
+			if self.configFile.needToSave:
+				msgBox.setText(u"Сохранить файл конфигурации?")
+				msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
+				msgBox.setDefaultButton(QMessageBox.Yes)
+				userChoice = msgBox.exec_()
+				if userChoice == QMessageBox.Cancel:
+					event.ignore()
+				else:
+					if userChoice == QMessageBox.Yes:
+						self.configFile.save()
+					self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
+					self.lwAux.keyPressEvent = self.lwAux.defKeyPressEvent
+					event.accept()
+
 
 
 		
