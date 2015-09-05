@@ -21,7 +21,6 @@ app = QtGui.QApplication(sys.argv)
 MAIN_WINDOW_UI_FILE = os.path.join(APP_DIR, u"MainWindow.ui")
 MAIN_WINDOW_ICON = QIcon(os.path.join(APP_DIR, u"qt-logo.png"))
 
-ASK_SAVE_CFG_ON_EXIT = False
 
 
 class MyListWidgetItem(QListWidgetItem):
@@ -73,8 +72,9 @@ class MainWindow(QtGui.QMainWindow):
 
 	def onKeyPress_lwMain_manageWorkingDirs(self, keyEvent):
 		self.lwMain.defKeyPressEvent(keyEvent)
+		key = keyEvent.key()
 
-		if keyEvent.key() == QtCore.Qt.Key_Return:		# переход в режим управления выбранным рабочим каталогом
+		if key == Qt.Key_Return:				# переход в режим управления выбранным рабочим каталогом
 			if self.lwMain.currentRow() >= 0:
 				self.selectedWorkingDir = unicode(self.lwMain.currentItem().text())
 				if self.workingDirs[self.selectedWorkingDir]["exists"]:
@@ -84,13 +84,13 @@ class MainWindow(QtGui.QMainWindow):
 					self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
 					self.startManageSelectedWorkingDir()
 			
-		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим в режим добавления нового рабочего каталога
+		elif key == Qt.Key_Insert:				# переходим в режим добавления нового рабочего каталога
 			print u"Переходим в режим добавления нового рабочего каталога"
 			self.lwMain.currentRowChanged.disconnect(self.onChangeCurrentWorkingDir)
 			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
 			self.startAddingNewWorkingDir()
 
-		elif keyEvent.key() == QtCore.Qt.Key_Delete:	# удаление каталога из списка рабочих
+		elif key == Qt.Key_Delete:				# удаление каталога из списка рабочих
 			if self.lwMain.count():
 				self.selectedWorkingDir = unicode(self.lwMain.currentItem().text())
 				print u"Удаление каталога из списка рабочих: {0}".format(self.selectedWorkingDir)
@@ -101,7 +101,6 @@ class MainWindow(QtGui.QMainWindow):
 
 	# Режим добавления нового рабочего каталога
 	def startAddingNewWorkingDir(self):
-		#self.lwAux.setFocusPolicy(Qt.NoFocus)
 		self.lwAux.setDisabled(True)
 		self.lwMain.keyPressEvent = self.onKeyPress_lwMain_addingNewWorkingDir
 		self.showDirContent(self.walkDir, self.lwMain)
@@ -113,7 +112,6 @@ class MainWindow(QtGui.QMainWindow):
 
 		if keyEvent.key() == QtCore.Qt.Key_Escape:		# возвращаемся в режим управления списком рабочих каталогов
 			print u"Возвращаемся в режим управления списком рабочих каталогов"
-			#self.lwAux.setFocusPolicy(Qt.StrongFocus)
 			self.lwAux.setEnabled(True)
 			self.startManageWorkingDirs()
 
@@ -135,7 +133,6 @@ class MainWindow(QtGui.QMainWindow):
 				self.workingDirs[self.walkDir] = {"entries": {}, "new": MyLib.getEntries(self.walkDir), "exists": True}
 				self.configFile.needToSave = True
 				print u"Возвращаемся в режим управления списком рабочих каталогов"
-				#self.lwAux.setFocusPolicy(Qt.StrongFocus)
 				self.lwAux.setEnabled(True)
 				self.startManageWorkingDirs()
 
@@ -189,8 +186,6 @@ class MainWindow(QtGui.QMainWindow):
 			if self.lwMain.currentRow() >= 0:
 				self.selectedEntryName = unicode(self.lwMain.currentItem().text())
 				self.selectedEntryRow = self.lwMain.currentRow()
-				#print u"Перешли в режим добавления новой ссылки для \"{0}\"".format(entryName)
-				#print self.workingDirs[self.selectedWorkingDir]
 				self.lwMain.setDisabled(True)
 				self.lwMain.currentRowChanged.disconnect(self.onCurrentEntryChanged)
 				self.lwAux.currentRowChanged.disconnect(self.onCurrentLinkChanged)
@@ -245,19 +240,6 @@ class MainWindow(QtGui.QMainWindow):
 				wkDir["entries"][self.selectedEntryName]["links"].append(linkDest)
 				self.showDirContent(self.walkDir, self.lwAux)
 
-			'''
-			if self.walkDir in self.workingDirs:
-				QMessageBox(text = u"Каталог {0} уже есть в списке рабочих".format(self.walkDir), parent = self).exec_()
-			else:
-				self.workingDirs[self.walkDir] = {"entries": {}, "new": MyLib.getEntries(self.walkDir), "exists": True}
-				self.configFile.needToSave = True
-				print u"Возвращаемся в режим управления списком рабочих каталогов"
-				#self.lwAux.setFocusPolicy(Qt.StrongFocus)
-				self.lwAux.setEnabled(True)
-				self.startManageWorkingDirs()
-			'''
-
-			
 
 	def showLinks(self, entryName, lw):
 		lw.bindedLineEdit.setText(u"Ссылки на \"{0}\":".format(entryName))
@@ -315,7 +297,6 @@ class MainWindow(QtGui.QMainWindow):
 		if msgBox.exec_() == QMessageBox.No:
 			event.ignore()
 		else:
-			#if ASK_SAVE_CFG_ON_EXIT:
 			if self.configFile.needToSave:
 				msgBox.setText(u"Сохранить файл конфигурации?")
 				msgBox.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
