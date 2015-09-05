@@ -6,6 +6,7 @@ __pycache__/
 tmp.py
 download_dirs.cfg
 *.bak
+*.swp
 
 # C extensions
 *.so

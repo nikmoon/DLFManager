@@ -39,7 +39,7 @@ class ConfigFile(object):
 					wkDir = workingDirs[wkDirName]
 				elif line.startswith(ENTRY_STR):
 					entryName = line[1:-1].decode("utf-8")
-					wkDir["entries"][entryName] = {"links": [], "exists": os.path.exists(u"/".join([wkDirName, entryName]))}
+					wkDir["entries"][entryName] = {"links": [], "exists": os.path.exists(os.path.join(wkDirName, entryName))}
 					entryLinks = wkDir["entries"][entryName]["links"]
 				else:
 					linkName = line[:-1].decode("utf-8")

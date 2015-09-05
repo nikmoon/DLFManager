@@ -82,7 +82,7 @@ class MainWindow(QtGui.QMainWindow):
 					print self.selectedWorkingDir
 					self.lwMain.currentRowChanged.disconnect(self.onChangeCurrentWorkingDir)
 					self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
-					self.startManageSelectedWorkingDir(self.selectedWorkingDir)
+					self.startManageSelectedWorkingDir()
 			
 		elif keyEvent.key() == QtCore.Qt.Key_Insert:	# переходим в режим добавления нового рабочего каталога
 			print u"Переходим в режим добавления нового рабочего каталога"
@@ -101,7 +101,8 @@ class MainWindow(QtGui.QMainWindow):
 
 	# Режим добавления нового рабочего каталога
 	def startAddingNewWorkingDir(self):
-		self.lwAux.setFocusPolicy(Qt.NoFocus)
+		#self.lwAux.setFocusPolicy(Qt.NoFocus)
+		self.lwAux.setDisabled(True)
 		self.lwMain.keyPressEvent = self.onKeyPress_lwMain_addingNewWorkingDir
 		self.showDirContent(self.walkDir, self.lwMain)
 		self.lwMain.setCurrentRow(0)
@@ -112,7 +113,8 @@ class MainWindow(QtGui.QMainWindow):
 
 		if keyEvent.key() == QtCore.Qt.Key_Escape:		# возвращаемся в режим управления списком рабочих каталогов
 			print u"Возвращаемся в режим управления списком рабочих каталогов"
-			self.lwAux.setFocusPolicy(Qt.StrongFocus)
+			#self.lwAux.setFocusPolicy(Qt.StrongFocus)
+			self.lwAux.setEnabled(True)
 			self.startManageWorkingDirs()
 
 		elif keyEvent.key() == QtCore.Qt.Key_Return:	# переход во вложенный каталог
@@ -133,17 +135,20 @@ class MainWindow(QtGui.QMainWindow):
 				self.workingDirs[self.walkDir] = {"entries": {}, "new": MyLib.getEntries(self.walkDir), "exists": True}
 				self.configFile.needToSave = True
 				print u"Возвращаемся в режим управления списком рабочих каталогов"
-				self.lwAux.setFocusPolicy(Qt.StrongFocus)
+				#self.lwAux.setFocusPolicy(Qt.StrongFocus)
+				self.lwAux.setEnabled(True)
 				self.startManageWorkingDirs()
 
 
-	def startManageSelectedWorkingDir(self, wkDirName):
+	def startManageSelectedWorkingDir(self, setRow = None):
 		self.lwAux.clear()
-		self.showWorkingDirContent(wkDirName, self.lwMain)
+		self.showWorkingDirContent(self.selectedWorkingDir, self.lwMain)
 		self.lwMain.currentRowChanged.connect(self.onCurrentEntryChanged)
 		self.lwAux.currentRowChanged.connect(self.onCurrentLinkChanged)
 		self.lwMain.keyPressEvent = self.onKeyPress_lwMain_manageSelectedWorkingDir
 		self.lwAux.keyPressEvent = self.onKeyPress_lwAux_manageSelectedWorkingDir
+		if not setRow is None:
+			self.lwMain.setCurrentRow(setRow)
 
 
 	def onCurrentEntryChanged(self, rowNum):
@@ -158,29 +163,101 @@ class MainWindow(QtGui.QMainWindow):
 
 	def onKeyPress_lwMain_manageSelectedWorkingDir(self, keyEvent):
 		self.lwMain.defKeyPressEvent(keyEvent)
+		key = keyEvent.key()
 
-		if keyEvent.key() == Qt.Key_Escape:			# возвращаемся к управлению списком рабочих каталогов
+		if key == Qt.Key_Escape:			# возвращаемся к управлению списком рабочих каталогов
 			self.lwMain.currentRowChanged.disconnect(self.onCurrentEntryChanged)
 			self.lwAux.currentRowChanged.disconnect(self.onCurrentLinkChanged)
 			self.lwMain.keyPressEvent = self.lwMain.defKeyPressEvent
 			self.lwAux.keyPressEvent = self.lwAux.defKeyPressEvent
 			self.startManageWorkingDirs()
 
+		elif key == Qt.Key_Return:
+			self.lwAux.setFocus()
+
 
 	def onKeyPress_lwAux_manageSelectedWorkingDir(self, keyEvent):
 		self.lwAux.defKeyPressEvent(keyEvent)
-
+	
 		key = keyEvent.key()
 
 		if key == Qt.Key_Escape:			# возвращаем фокус главному виджету
+			self.lwMain.setEnabled(True)
 			self.lwMain.setFocus()
 
 		elif key == Qt.Key_Insert:			# добавляем новую ссылку для выбранного элемента 
 			if self.lwMain.currentRow() >= 0:
-				entryName = unicode(self.lwMain.currentItem().text())
-				print u"Перешли в режим добавления новой ссылки для \"{0}\"".format(entryName)
-			pass
+				self.selectedEntryName = unicode(self.lwMain.currentItem().text())
+				self.selectedEntryRow = self.lwMain.currentRow()
+				#print u"Перешли в режим добавления новой ссылки для \"{0}\"".format(entryName)
+				#print self.workingDirs[self.selectedWorkingDir]
+				self.lwMain.setDisabled(True)
+				self.lwMain.currentRowChanged.disconnect(self.onCurrentEntryChanged)
+				self.lwAux.currentRowChanged.disconnect(self.onCurrentLinkChanged)
+				self.lwAux.keyPressEvent = self.lwAux.defKeyPressEvent
+				self.startNewLinkMaking()
 
+
+	def startNewLinkMaking(self):
+		self.lwAux.keyPressEvent = self.onKeyPress_lwAux_NewLinkMaking
+		self.showDirContent(self.walkDir, self.lwAux)
+
+	def onKeyPress_lwAux_NewLinkMaking(self, keyEvent):
+		self.lwAux.defKeyPressEvent(keyEvent)
+		key = keyEvent.key()
+
+		if key == Qt.Key_Escape:				# возвращаемся к управлению выбранным рабочим каталогом
+			self.lwAux.keyPressEvent = self.lwAux.defKeyPressEvent
+			self.lwMain.setEnabled(True)
+			self.lwMain.setFocus()
+			self.startManageSelectedWorkingDir(self.selectedEntryRow)
+
+		elif key == Qt.Key_Return:				# переход во вложенный каталог
+			print self.lwAux.currentRow()
+			if self.lwAux.currentRow() >= 0:
+				entryPath = os.path.join(self.walkDir, unicode(self.lwAux.currentItem().text()))
+				if os.path.isdir(entryPath):
+					self.walkDir = entryPath
+					self.showDirContent(entryPath, self.lwAux)
+
+		elif key == Qt.Key_Backspace:			# переход в каталог уровнем выше
+			self.walkDir = os.path.dirname(self.walkDir)
+			self.showDirContent(self.walkDir, self.lwAux)
+
+		
+		elif key == Qt.Key_Insert:				# выбран каталог, в котором будет создана ссылкa
+			linkDest = os.path.join(self.walkDir, self.selectedEntryName)
+			if not os.path.exists(linkDest):
+				linkSrc = os.path.join(self.selectedWorkingDir, self.selectedEntryName)
+				if os.path.isfile(linkSrc):
+					os.link(linkSrc, linkDest)
+				elif os.path.isdir(linkSrc):
+					os.symlink(linkSrc, linkDest)
+				else:
+					print u"Неизвестный тип элемента каталога с именем {0}".format(linkSrc)
+					return
+
+				wkDir = self.workingDirs[self.selectedWorkingDir]
+				self.configFile.needToSave = True
+				if self.selectedEntryName in wkDir["new"]:
+					wkDir["new"].remove(self.selectedEntryName)
+					wkDir["entries"][self.selectedEntryName] = {"links": [], "exists": True}
+				wkDir["entries"][self.selectedEntryName]["links"].append(linkDest)
+				self.showDirContent(self.walkDir, self.lwAux)
+
+			'''
+			if self.walkDir in self.workingDirs:
+				QMessageBox(text = u"Каталог {0} уже есть в списке рабочих".format(self.walkDir), parent = self).exec_()
+			else:
+				self.workingDirs[self.walkDir] = {"entries": {}, "new": MyLib.getEntries(self.walkDir), "exists": True}
+				self.configFile.needToSave = True
+				print u"Возвращаемся в режим управления списком рабочих каталогов"
+				#self.lwAux.setFocusPolicy(Qt.StrongFocus)
+				self.lwAux.setEnabled(True)
+				self.startManageWorkingDirs()
+			'''
+
+			
 
 	def showLinks(self, entryName, lw):
 		lw.bindedLineEdit.setText(u"Ссылки на \"{0}\":".format(entryName))
@@ -190,7 +267,6 @@ class MainWindow(QtGui.QMainWindow):
 			for link in entry["links"]:
 				item = MyListWidgetItem(link)
 				lw.addItem(item)
-			lw.addItem(MyListWidgetItem(u"Фиктивная ссылка..."))
 	
 
 	def showWorkingDirs(self, lw):
