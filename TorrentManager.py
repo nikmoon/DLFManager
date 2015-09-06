@@ -192,6 +192,23 @@ class MainWindow(QtGui.QMainWindow):
 				self.lwAux.keyPressEvent = self.lwAux.defKeyPressEvent
 				self.startNewLinkMaking()
 
+		elif key == Qt.Key_Delete:
+			if self.lwAux.currentRow() >= 0:
+				linkDest = unicode(self.lwAux.currentItem().text())
+				if os.path.exists(linkDest):
+					os.unlink(linkDest)
+					print u"Cсылка \"{0}\" удалена".format(linkDest)
+				entryName = unicode(self.lwMain.currentItem().text())
+				workingDir = self.workingDirs[self.selectedWorkingDir]
+				entries = workingDir["entries"]
+				entries[entryName]["links"].remove(linkDest)
+				if not entries[entryName]["links"]:
+					del workingDir["entries"][entryName]
+					workingDir["new"].append(entryName)
+					self.showWorkingDirContent(self.selectedWorkingDir, self.lwMain)
+				self.showLinks(entryName, self.lwAux)
+				self.configFile.needToSave = True
+
 
 	def startNewLinkMaking(self):
 		self.lwAux.keyPressEvent = self.onKeyPress_lwAux_NewLinkMaking
